@@ -131,7 +131,7 @@ async def decode_qr(update: Update, context: ContextTypes.DEFAULT_TYPE):
     bio.seek(0)
 
     img = Image.open(bio)
-    decoded = decode(img)
+    decoded = decode_qr_from_image(image_path)
 
     if not decoded:
         await update.message.reply_text("❌ No QR code found")
