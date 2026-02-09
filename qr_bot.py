@@ -131,22 +131,22 @@ async def decode_qr(update: Update, context: ContextTypes.DEFAULT_TYPE):
     photo = update.message.photo[-1]
     file = await photo.get_file()
 
-    bio = io.BytesIO()
-    await file.download_to_memory(bio)
-    bio.seek(0)
+    image_path = f"/tmp/{update.message.message_id}.png"
+    await file.download_to_drive(image_path)
 
-    img = Image.open(bio)
     decoded = decode_qr_from_image(image_path)
+
+    os.remove(image_path)
 
     if not decoded:
         await update.message.reply_text("❌ No QR code found")
         return
 
-    result = decoded[0].data.decode("utf-8")
     await update.message.reply_text(
-        f"🔓 *Decoded QR:*\n\n`{result}`",
+        f"🔓 *Decoded QR:*\n\n`{decoded}`",
         parse_mode="Markdown"
     )
+
 
 
 # ---------- MAIN ----------
