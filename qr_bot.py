@@ -122,20 +122,39 @@ async def text_to_qr(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 
 # ---------- DECODE QR IMAGE ----------
-async def decode_qr(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    # In group → caption must be /decode
-    if update.message.chat.type != "private":
-        if update.message.caption != "/decode":
-            return
+async def decode_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    # Block in private chat
+    if update.message.chat.type == "private":
+        await update.message.reply_text(
+            "❌ /decode works only in groups.\n"
+            "Just send the QR image directly in private chat."
+        )
+        return
 
-    photo = update.message.photo[-1]
+    # Must be a reply
+    if not update.message.reply_to_message:
+        await update.message.reply_text(
+            "❌ Reply to a QR image with /decode"
+        )
+        return
+
+    replied = update.message.reply_to_message
+
+    # Replied message must contain a photo
+    if not replied.photo:
+        await update.message.reply_text(
+            "❌ The replied message does not contain an image"
+        )
+        return
+
+    # Decode the replied image
+    photo = replied.photo[-1]
     file = await photo.get_file()
 
-    image_path = f"/tmp/{update.message.message_id}.png"
+    image_path = f"/tmp/{replied.message_id}.png"
     await file.download_to_drive(image_path)
 
     decoded = decode_qr_from_image(image_path)
-
     os.remove(image_path)
 
     if not decoded:
@@ -146,6 +165,7 @@ async def decode_qr(update: Update, context: ContextTypes.DEFAULT_TYPE):
         f"🔓 *Decoded QR:*\n\n`{decoded}`",
         parse_mode="Markdown"
     )
+
 
 
 
