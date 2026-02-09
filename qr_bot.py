@@ -14,11 +14,16 @@ import cv2
 import numpy as np
 from PIL import Image
 
-def decode_qr(image_path):
+def decode_qr_from_image(image_path):
     img = cv2.imread(image_path)
+
     detector = cv2.QRCodeDetector()
     data, bbox, _ = detector.detectAndDecode(img)
-    return data if data else None
+
+    if data:
+        return data
+    return None
+
 
 
 #Token : 7627346064:AAGjH-hdUlksI4bFbn55YVQjxy2ciu7Pdgw
