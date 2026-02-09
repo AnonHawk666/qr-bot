@@ -10,7 +10,16 @@ from telegram.ext import (
 )
 import qrcode
 from PIL import Image
-from pyzbar.pyzbar import decode
+import cv2
+import numpy as np
+from PIL import Image
+
+def decode_qr(image_path):
+    img = cv2.imread(image_path)
+    detector = cv2.QRCodeDetector()
+    data, bbox, _ = detector.detectAndDecode(img)
+    return data if data else None
+
 
 #Token : 7627346064:AAGjH-hdUlksI4bFbn55YVQjxy2ciu7Pdgw
 BOT_TOKEN = os.getenv("BOT_TOKEN")
