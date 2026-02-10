@@ -28,7 +28,6 @@ def decode_qr_from_image(image_path):
 
 #Token : 7627346064:AAGjH-hdUlksI4bFbn55YVQjxy2ciu7Pdgw
 BOT_TOKEN = os.getenv("BOT_TOKEN")
-
 from telegram.request import HTTPXRequest
 
 request = HTTPXRequest(
@@ -122,32 +121,51 @@ async def text_to_qr(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 
 # ---------- DECODE QR IMAGE ----------
+async def decode_qr_photo(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    msg = update.message
+
+    # GROUP: must have caption /decode
+    if msg.chat.type != "private":
+        if msg.caption != "/decode":
+            return
+
+    photo = msg.photo[-1]
+    file = await photo.get_file()
+
+    image_path = f"/tmp/{msg.message_id}.png"
+    await file.download_to_drive(image_path)
+
+    decoded = decode_qr_from_image(image_path)
+    os.remove(image_path)
+
+    if not decoded:
+        await msg.reply_text("❌ No QR code found")
+        return
+
+    await msg.reply_text(
+        f"🔓 *Decoded QR:*\n\n`{decoded}`",
+        parse_mode="Markdown"
+    )
+
+
 async def decode_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    # Block in private chat
-    if update.message.chat.type == "private":
-        await update.message.reply_text(
-            "❌ /decode works only in groups.\n"
-            "Just send the QR image directly in private chat."
+    msg = update.message
+
+    # Private chat → block
+    if msg.chat.type == "private":
+        await msg.reply_text(
+            "❌ Just send the QR image directly in private chat."
         )
         return
 
     # Must be a reply
-    if not update.message.reply_to_message:
-        await update.message.reply_text(
+    if not msg.reply_to_message or not msg.reply_to_message.photo:
+        await msg.reply_text(
             "❌ Reply to a QR image with /decode"
         )
         return
 
-    replied = update.message.reply_to_message
-
-    # Replied message must contain a photo
-    if not replied.photo:
-        await update.message.reply_text(
-            "❌ The replied message does not contain an image"
-        )
-        return
-
-    # Decode the replied image
+    replied = msg.reply_to_message
     photo = replied.photo[-1]
     file = await photo.get_file()
 
@@ -158,16 +176,13 @@ async def decode_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     os.remove(image_path)
 
     if not decoded:
-        await update.message.reply_text("❌ No QR code found")
+        await msg.reply_text("❌ No QR code found")
         return
 
-    await update.message.reply_text(
+    await msg.reply_text(
         f"🔓 *Decoded QR:*\n\n`{decoded}`",
         parse_mode="Markdown"
     )
-
-
-
 
 # ---------- MAIN ----------
 def main():
@@ -186,7 +201,7 @@ def main():
     )
 
     # Photo → Decode
-    app.add_handler(MessageHandler(filters.PHOTO, decode_qr))
+    app.add_handler(MessageHandler(filters.PHOTO, decode_qr_photo))
 
     print("✅ QR Bot is running...")
     app.run_polling()
