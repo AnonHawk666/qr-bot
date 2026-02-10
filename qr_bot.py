@@ -13,20 +13,31 @@ from PIL import Image
 import cv2
 import numpy as np
 from PIL import Image
-from pyzbar.pyzbar import decode
 def decode_qr_from_image(image_path: str) -> str | None:
     img = cv2.imread(image_path)
-
     if img is None:
         return None
 
-    # 1️⃣ Grayscale
+    detector = cv2.QRCodeDetector()
+
+    # 1️⃣ Try raw image
+    data, _, _ = detector.detectAndDecode(img)
+    if data:
+        return data
+
+    # 2️⃣ Grayscale
     gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+    data, _, _ = detector.detectAndDecode(gray)
+    if data:
+        return data
 
-    # 2️⃣ Invert
+    # 3️⃣ Invert
     inverted = cv2.bitwise_not(gray)
+    data, _, _ = detector.detectAndDecode(inverted)
+    if data:
+        return data
 
-    # 3️⃣ Adaptive threshold (best for UI / wallet QRs)
+    # 4️⃣ Adaptive threshold (this is the BIG one)
     bw = cv2.adaptiveThreshold(
         inverted,
         255,
@@ -35,28 +46,17 @@ def decode_qr_from_image(image_path: str) -> str | None:
         31,
         5
     )
+    data, _, _ = detector.detectAndDecode(bw)
+    if data:
+        return data
 
-    # 4️⃣ Slight blur (reduces Telegram JPEG noise)
+    # 5️⃣ Blur to reduce JPEG noise
     blurred = cv2.GaussianBlur(bw, (3, 3), 0)
-
-    # Try decoding on multiple variants
-    variants = [gray, inverted, bw, blurred]
-
-    for v in variants:
-        result = decode(Image.fromarray(v))
-        if result:
-            return result[0].data.decode("utf-8")
-
-    # Final fallback: OpenCV detector
-    detector = cv2.QRCodeDetector()
-    for v in variants:
-        data, _, _ = detector.detectAndDecode(v)
-        if data:
-            return data
+    data, _, _ = detector.detectAndDecode(blurred)
+    if data:
+        return data
 
     return None
-
-
 
 #Token : 7627346064:AAGjH-hdUlksI4bFbn55YVQjxy2ciu7Pdgw
 BOT_TOKEN = os.getenv("BOT_TOKEN")
